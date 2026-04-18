@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Task } from '@/lib/db'
+import { Task } from '@/lib/supabase'
 import { createTask, updateTask, deleteTask } from './actions'
 
 export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
