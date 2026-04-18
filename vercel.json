@@ -2,11 +2,11 @@
     "version": 2,
     "builds": [
         {
-            "src": "api/index.php",
+            "src": "public/index.php",
             "use": "vercel-php@0.9.0"
         },
         {
-            "src": "/public/**",
+            "src": "public/**",
             "use": "@vercel/static"
         }
     ],
@@ -17,12 +17,20 @@
         },
         {
             "src": "/(.*)",
-            "dest": "/api/index.php"
+            "dest": "/public/index.php"
         }
     ],
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "true",
-        "LOG_CHANNEL": "stderr"
+        "APP_KEY": "base64:0D2peSCpd4C88HNNKfApNIfYFLyHbcf1h4Q0J4HL6Mk=",
+        "LOG_CHANNEL": "stderr",
+        "SESSION_DRIVER": "cookie",
+        "DB_CONNECTION": "pgsql",
+        "DB_HOST": "db.rqvnoicxncarysohmsvb.supabase.co",
+        "DB_PORT": "5432",
+        "DB_DATABASE": "postgres",
+        "DB_USERNAME": "postgres",
+        "DB_PASSWORD": "2sd1w2wa3s2"
     }
 }
