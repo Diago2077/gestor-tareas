@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { Task } from '@/lib/supabase'
-import { createTask, updateTask, deleteTask } from './actions'
+import { createTask, updateTask, deleteTask, quickUpdateTaskStatus } from './actions'
 
 export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
     const [editingTask, setEditingTask] = useState<Task | null>(null)
 
     // Using transition for server actions to keep UI snappy and non-blocking
@@ -19,9 +20,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         setIsPending(true)
         const formData = new FormData(e.currentTarget)
         await createTask(formData)
-        // Optimistic close
         setIsCreateOpen(false)
-        // Refresh page logic natively relies on Next.js Server Actions revalidation
         window.location.reload()
     }
 
@@ -31,6 +30,15 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         setIsPending(true)
         const formData = new FormData(e.currentTarget)
         await updateTask(editingTask.id, formData)
+        setIsEditOpen(false)
+        setIsEditing(false)
+        window.location.reload()
+    }
+
+    const handleQuickStatus = async (newStatus: string) => {
+        if (!editingTask) return
+        setIsPending(true)
+        await quickUpdateTaskStatus(editingTask.id, newStatus)
         setIsEditOpen(false)
         window.location.reload()
     }
@@ -45,6 +53,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
     const openEdit = (task: Task) => {
         setEditingTask(task)
         setIsEditOpen(true)
+        setIsEditing(false) // Start in view mode
     }
 
     return (
@@ -126,39 +135,80 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                 </div>
             </div>
 
-            {/* Modal Editar */}
+            {/* Modal Detalles / Editar */}
             {editingTask && (
-                <div className={`modal-overlay ${isEditOpen ? 'show' : ''}`} onClick={() => setIsEditOpen(false)}>
+                <div className={`modal-overlay ${isEditOpen ? 'show' : ''}`} onClick={() => { setIsEditOpen(false); setIsEditing(false); }}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            Editar Tarea
+                            {isEditing ? 'Editar Tarea' : 'Detalles de Tarea'}
                         </div>
-                        <form onSubmit={handleEditSubmit}>
-                            <div className="modal-content">
-                                <div className="form-group">
-                                    <label className="form-label">Título</label>
-                                    <input type="text" name="title" className="form-control" required defaultValue={editingTask.title} disabled={isPending} />
+                        
+                        {!isEditing ? (
+                            <>
+                                <div className="modal-content">
+                                    <div className="view-mode">
+                                        <div className="view-status">
+                                            <span className={`badge ${editingTask.status === 'Completada' ? 'completed' : (editingTask.status === 'En curso' ? 'in_progress' : 'pending')}`}>
+                                                {editingTask.status}
+                                            </span>
+                                        </div>
+                                        <h2 className="view-title">{editingTask.title}</h2>
+                                        <p className="view-desc">{editingTask.description || 'Sin descripción'}</p>
+                                        
+                                        <div className="quick-actions" style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            {editingTask.status === 'Pendiente' && (
+                                                <button className="btn btn-outline" onClick={() => handleQuickStatus('En curso')} disabled={isPending}>
+                                                    <i className="material-icons" style={{ fontSize: '18px', marginRight: '4px' }}>play_arrow</i> En curso
+                                                </button>
+                                            )}
+                                            {editingTask.status !== 'Completada' && (
+                                                <button className="btn btn-outline" onClick={() => handleQuickStatus('Completada')} disabled={isPending}>
+                                                    <i className="material-icons" style={{ fontSize: '18px', marginRight: '4px' }}>check</i> Completar
+                                                </button>
+                                            )}
+                                            {editingTask.status === 'Completada' && (
+                                                <button className="btn btn-outline" onClick={() => handleQuickStatus('Pendiente')} disabled={isPending}>
+                                                    <i className="material-icons" style={{ fontSize: '18px', marginRight: '4px' }}>restore</i> Reabrir
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Descripción</label>
-                                    <textarea name="description" className="form-control" rows={3} defaultValue={editingTask.description || ''} disabled={isPending}></textarea>
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-danger" onClick={() => handleDelete(editingTask.id)} disabled={isPending}>Eliminar</button>
+                                    <div style={{ flex: 1 }}></div>
+                                    <button type="button" className="btn btn-text" onClick={() => setIsEditOpen(false)}>Cerrar</button>
+                                    <button type="button" className="btn btn-primary" onClick={() => setIsEditing(true)}>Editar</button>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Estado</label>
-                                    <select name="status" className="form-control" defaultValue={editingTask.status} disabled={isPending}>
-                                        <option value="Pendiente">Pendiente</option>
-                                        <option value="En curso">En curso</option>
-                                        <option value="Completada">Completada</option>
-                                    </select>
+                            </>
+                        ) : (
+                            <form onSubmit={handleEditSubmit}>
+                                <div className="modal-content">
+                                    <div className="form-group">
+                                        <label className="form-label">Título</label>
+                                        <input type="text" name="title" className="form-control" required defaultValue={editingTask.title} disabled={isPending} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Descripción</label>
+                                        <textarea name="description" className="form-control" rows={3} defaultValue={editingTask.description || ''} disabled={isPending}></textarea>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Estado</label>
+                                        <select name="status" className="form-control" defaultValue={editingTask.status} disabled={isPending}>
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="En curso">En curso</option>
+                                            <option value="Completada">Completada</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="modal-actions">
-                                <button type="button" className="btn btn-danger" onClick={() => handleDelete(editingTask.id)} disabled={isPending}>Eliminar</button>
-                                <div style={{ flex: 1 }}></div>
-                                <button type="button" className="btn btn-text" onClick={() => setIsEditOpen(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary" disabled={isPending}>Actualizar</button>
-                            </div>
-                        </form>
+                                <div className="modal-actions">
+                                    <button type="button" className="btn btn-text" onClick={() => setIsEditing(false)}>Volver</button>
+                                    <div style={{ flex: 1 }}></div>
+                                    <button type="button" className="btn btn-text" onClick={() => setIsEditOpen(false)}>Cancelar</button>
+                                    <button type="submit" className="btn btn-primary" disabled={isPending}>Actualizar</button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

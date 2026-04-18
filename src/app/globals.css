@@ -339,3 +339,45 @@ textarea.form-control {
 .btn-danger:hover {
     background-color: #fce8e6;
 }
+
+/* View Mode Details */
+.view-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.view-status {
+    margin-bottom: 4px;
+}
+
+.view-title {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.view-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    border-left: 4px solid var(--divider);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--divider);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-outline:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}

@@ -83,3 +83,18 @@ export async function deleteTask(id: number) {
     console.log('Task deleted successfully')
     revalidatePath('/')
 }
+export async function quickUpdateTaskStatus(id: number, uiStatus: string) {
+    const status = STATUS_MAP[uiStatus] || 'pending'
+    console.log('Attempting quick status update:', { id, uiStatus, status })
+
+    const { error } = await supabase.from('tasks').update({
+        status
+    }).eq('id', id)
+    
+    if (error) {
+        console.error('Supabase Error (quickUpdateTaskStatus):', error)
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/')
+}
