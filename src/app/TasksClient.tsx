@@ -5,7 +5,7 @@ import { Task } from '@/lib/supabase'
 import { createTask, updateTask, deleteTask, quickUpdateTaskStatus } from './actions'
 
 export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
-    const [tasks, setTasks] = useState<Task[]>(initialTasks)
+    const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
@@ -13,6 +13,15 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
 
     // Using transition for server actions to keep UI snappy and non-blocking
     const [isPending, setIsPending] = useState(false)
+
+    // Filter tasks based on activeTab
+    const filteredTasks = initialTasks.filter(task => {
+        if (activeTab === 'pending') {
+            return task.status === 'Pendiente' || task.status === 'En curso'
+        } else {
+            return task.status === 'Completada'
+        }
+    })
 
     // Handlers mapped exactly to AppSheet CSS class behaviors
     const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,21 +71,29 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                 <button className="icon-button">
                     <i className="material-icons">menu</i>
                 </button>
-                <h1 className="app-title">Gestor de Tareas</h1>
+                <h1 className="app-title">
+                    {activeTab === 'pending' ? 'Mis Tareas' : 'Tareas Completadas'}
+                </h1>
                 <button className="icon-button">
                     <i className="material-icons">search</i>
                 </button>
             </header>
 
             <main className="app-content">
-                {initialTasks.length === 0 ? (
+                {filteredTasks.length === 0 ? (
                     <div className="empty-state" style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-secondary)' }}>
-                        <i className="material-icons" style={{ fontSize: '64px' }}>assignment</i>
-                        <p>No hay tareas pendientes</p>
+                        <i className="material-icons" style={{ fontSize: '64px' }}>
+                            {activeTab === 'pending' ? 'assignment' : 'check_circle'}
+                        </i>
+                        <p>
+                            {activeTab === 'pending' 
+                                ? 'No hay tareas pendientes' 
+                                : 'No hay tareas completadas'}
+                        </p>
                     </div>
                 ) : (
                     <div className="list-container">
-                        {initialTasks.map(task => (
+                        {filteredTasks.map(task => (
                             <div className="card" key={task.id} onClick={() => openEdit(task)}>
                                 <div className="card-header">
                                     <h3 className="card-title">{task.title}</h3>
@@ -92,23 +109,29 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
             </main>
 
             <nav className="bottom-nav">
-                <a href="#" className="nav-item active">
+                <button 
+                    className={`nav-item ${activeTab === 'pending' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('pending')}
+                    style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}
+                >
                     <i className="material-icons">list</i>
                     <span>Tareas</span>
-                </a>
-                <a href="#" className="nav-item">
-                    <i className="material-icons">calendar_today</i>
-                    <span>Calendario</span>
-                </a>
-                <a href="#" className="nav-item">
-                    <i className="material-icons">person</i>
-                    <span>Perfil</span>
-                </a>
+                </button>
+                <button 
+                    className={`nav-item ${activeTab === 'completed' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('completed')}
+                    style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}
+                >
+                    <i className="material-icons">check_circle</i>
+                    <span>Completadas</span>
+                </button>
             </nav>
 
-            <button className="fab" onClick={() => setIsCreateOpen(true)}>
-                <i className="material-icons">add</i>
-            </button>
+            {activeTab === 'pending' && (
+                <button className="fab" onClick={() => setIsCreateOpen(true)}>
+                    <i className="material-icons">add</i>
+                </button>
+            )}
 
             {/* Modal Crear */}
             <div className={`modal-overlay ${isCreateOpen ? 'show' : ''}`} onClick={() => setIsCreateOpen(false)}>
