@@ -12,6 +12,9 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
     const [isEditing, setIsEditing] = useState(false)
     const [editingTask, setEditingTask] = useState<Task | null>(null)
 
+    // Custom confirm dialog state
+    const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; taskId: number | null; taskTitle: string }>({ open: false, taskId: null, taskTitle: '' })
+
     // Using transition for server actions to keep UI snappy and non-blocking
     const [isPending, setIsPending] = useState(false)
 
@@ -104,19 +107,26 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         setIsPending(false)
     }
 
-    const handleDelete = async (id: number) => {
-        if (!confirm('¿Eliminar esta tarea?')) return
+    const requestDelete = (id: number, title: string) => {
+        setConfirmDelete({ open: true, taskId: id, taskTitle: title })
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!confirmDelete.taskId) return
         setIsPending(true)
+        setConfirmDelete({ open: false, taskId: null, taskTitle: '' })
         try {
-            await deleteTask(id)
+            await deleteTask(confirmDelete.taskId)
         } catch (error) {
             console.error('Error deleting task:', error)
-            alert('Error al eliminar la tarea.')
         }
-        // Always close modal and clean up, even if there was an error
         setIsPending(false)
         setIsEditOpen(false)
         setEditingTask(null)
+    }
+
+    const cancelDelete = () => {
+        setConfirmDelete({ open: false, taskId: null, taskTitle: '' })
     }
 
     const openEdit = (task: Task) => {
@@ -265,7 +275,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                                     </div>
                                 </div>
                                 <div className="modal-actions">
-                                    <button type="button" className="btn btn-danger" onClick={() => handleDelete(editingTask.id)} disabled={isPending}>Eliminar</button>
+                                    <button type="button" className="btn btn-danger" onClick={() => requestDelete(editingTask.id, editingTask.title)} disabled={isPending}>Eliminar</button>
                                     <div style={{ flex: 1 }}></div>
                                     <button type="button" className="btn btn-text" onClick={() => setIsEditOpen(false)}>Cerrar</button>
                                     <button type="button" className="btn btn-primary" onClick={() => setIsEditing(true)}>Editar</button>
@@ -302,6 +312,23 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                     </div>
                 </div>
             )}
+
+            {/* Modal Confirmar Eliminación */}
+            <div className={`modal-overlay ${confirmDelete.open ? 'show' : ''}`} onClick={cancelDelete}>
+                <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+                    <div className="confirm-icon">
+                        <i className="material-icons">warning</i>
+                    </div>
+                    <h3 className="confirm-title">¿Eliminar tarea?</h3>
+                    <p className="confirm-message">
+                        La tarea <strong>&quot;{confirmDelete.taskTitle}&quot;</strong> se eliminará permanentemente. Esta acción no se puede deshacer.
+                    </p>
+                    <div className="confirm-actions">
+                        <button type="button" className="btn btn-text" onClick={cancelDelete}>Cancelar</button>
+                        <button type="button" className="btn btn-danger" onClick={handleConfirmDelete}>Eliminar</button>
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }
