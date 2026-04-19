@@ -1,6 +1,7 @@
 'use server'
 
 import { supabase, Task, STATUS_MAP, REVERSE_STATUS_MAP } from '@/lib/supabase'
+import { revalidatePath } from 'next/cache'
 
 export async function getTasks() {
     const { data, error } = await supabase.from('tasks').select('*').order('id', { ascending: false })
