@@ -178,6 +178,8 @@ body {
     color: var(--text-primary);
     overflow-wrap: break-word;
     word-wrap: break-word;
+    min-width: 0;
+    flex: 1;
 }
 
 .card-desc {
@@ -361,6 +363,7 @@ textarea.form-control {
     color: var(--text-primary);
     overflow-wrap: break-word;
     word-wrap: break-word;
+    min-width: 0;
 }
 
 .view-desc {
