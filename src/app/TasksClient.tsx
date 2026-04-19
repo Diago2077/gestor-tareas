@@ -22,6 +22,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
 
     // Real-time subscription
     useEffect(() => {
+        console.log('Setting up real-time subscription...')
         const channel = supabase
             .channel('tasks-realtime')
             .on('postgres_changes', { 
@@ -29,13 +30,17 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                 schema: 'public', 
                 table: 'tasks' 
             }, (payload) => {
-                console.log('Real-time change detected:', payload)
+                console.log('Real-time change detected!', payload.eventType, payload)
                 
                 if (payload.eventType === 'INSERT') {
                     const newTask = payload.new as Task
                     // Map status back to UI strings
                     newTask.status = REVERSE_STATUS_MAP[newTask.status] || newTask.status
-                    setTasks(current => [newTask, ...current])
+                    setTasks(current => {
+                        // Avoid duplicates if revalidatePath already caught it
+                        if (current.some(t => t.id === newTask.id)) return current
+                        return [newTask, ...current]
+                    })
                 }
                 
                 if (payload.eventType === 'UPDATE') {
@@ -49,9 +54,12 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                     setTasks(current => current.filter(t => t.id !== deletedId))
                 }
             })
-            .subscribe()
+            .subscribe((status) => {
+                console.log('Subscription status:', status)
+            })
 
         return () => {
+            console.log('Cleaning up subscription...')
             supabase.removeChannel(channel)
         }
     }, [])
