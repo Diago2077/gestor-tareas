@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Task } from '@/lib/supabase'
+import { useState, useEffect } from 'react'
+import { Task, supabase, REVERSE_STATUS_MAP } from '@/lib/supabase'
 import { createTask, updateTask, deleteTask, quickUpdateTaskStatus } from './actions'
 
 export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
+    const [tasks, setTasks] = useState<Task[]>(initialTasks)
     const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
@@ -14,8 +15,49 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
     // Using transition for server actions to keep UI snappy and non-blocking
     const [isPending, setIsPending] = useState(false)
 
+    // Synchronize local state with initialTasks when props change (initial load or manual refresh)
+    useEffect(() => {
+        setTasks(initialTasks)
+    }, [initialTasks])
+
+    // Real-time subscription
+    useEffect(() => {
+        const channel = supabase
+            .channel('tasks-realtime')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'tasks' 
+            }, (payload) => {
+                console.log('Real-time change detected:', payload)
+                
+                if (payload.event === 'INSERT') {
+                    const newTask = payload.new as Task
+                    // Map status back to UI strings
+                    newTask.status = REVERSE_STATUS_MAP[newTask.status] || newTask.status
+                    setTasks(current => [newTask, ...current])
+                }
+                
+                if (payload.event === 'UPDATE') {
+                    const updatedTask = payload.new as Task
+                    updatedTask.status = REVERSE_STATUS_MAP[updatedTask.status] || updatedTask.status
+                    setTasks(current => current.map(t => t.id === updatedTask.id ? updatedTask : t))
+                }
+                
+                if (payload.event === 'DELETE') {
+                    const deletedId = payload.old.id
+                    setTasks(current => current.filter(t => t.id !== deletedId))
+                }
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [])
+
     // Filter tasks based on activeTab
-    const filteredTasks = initialTasks.filter(task => {
+    const filteredTasks = tasks.filter(task => {
         if (activeTab === 'pending') {
             return task.status === 'Pendiente' || task.status === 'En curso'
         } else {
@@ -23,14 +65,15 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         }
     })
 
-    // Handlers mapped exactly to AppSheet CSS class behaviors
+    // Handlers
     const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setIsPending(true)
         const formData = new FormData(e.currentTarget)
         await createTask(formData)
         setIsCreateOpen(false)
-        window.location.reload()
+        setIsPending(false)
+        // No reload needed, subscription handles it
     }
 
     const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -41,7 +84,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         await updateTask(editingTask.id, formData)
         setIsEditOpen(false)
         setIsEditing(false)
-        window.location.reload()
+        setIsPending(false)
     }
 
     const handleQuickStatus = async (newStatus: string) => {
@@ -49,14 +92,14 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
         setIsPending(true)
         await quickUpdateTaskStatus(editingTask.id, newStatus)
         setIsEditOpen(false)
-        window.location.reload()
+        setIsPending(false)
     }
 
     const handleDelete = async (id: number) => {
         if (!confirm('¿Eliminar esta tarea?')) return
         setIsPending(true)
         await deleteTask(id)
-        window.location.reload()
+        setIsPending(false)
     }
 
     const openEdit = (task: Task) => {

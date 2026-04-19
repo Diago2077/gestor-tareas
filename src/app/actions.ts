@@ -1,19 +1,6 @@
 'use server'
 
-import { supabase, Task } from '@/lib/supabase'
-import { revalidatePath } from 'next/cache'
-
-const STATUS_MAP: Record<string, string> = {
-    'Pendiente': 'pending',
-    'En curso': 'in_progress',
-    'Completada': 'completed'
-}
-
-const REVERSE_STATUS_MAP: Record<string, string> = {
-    'pending': 'Pendiente',
-    'in_progress': 'En curso',
-    'completed': 'Completada'
-}
+import { supabase, Task, STATUS_MAP, REVERSE_STATUS_MAP } from '@/lib/supabase'
 
 export async function getTasks() {
     const { data, error } = await supabase.from('tasks').select('*').order('id', { ascending: false })
