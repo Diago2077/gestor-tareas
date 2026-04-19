@@ -31,21 +31,21 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
             }, (payload) => {
                 console.log('Real-time change detected:', payload)
                 
-                if (payload.event === 'INSERT') {
+                if (payload.eventType === 'INSERT') {
                     const newTask = payload.new as Task
                     // Map status back to UI strings
                     newTask.status = REVERSE_STATUS_MAP[newTask.status] || newTask.status
                     setTasks(current => [newTask, ...current])
                 }
                 
-                if (payload.event === 'UPDATE') {
+                if (payload.eventType === 'UPDATE') {
                     const updatedTask = payload.new as Task
                     updatedTask.status = REVERSE_STATUS_MAP[updatedTask.status] || updatedTask.status
                     setTasks(current => current.map(t => t.id === updatedTask.id ? updatedTask : t))
                 }
                 
-                if (payload.event === 'DELETE') {
-                    const deletedId = payload.old.id
+                if (payload.eventType === 'DELETE') {
+                    const deletedId = (payload.old as any).id
                     setTasks(current => current.filter(t => t.id !== deletedId))
                 }
             })
