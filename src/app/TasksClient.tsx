@@ -77,11 +77,12 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
     const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setIsPending(true)
-        const formData = new FormData(e.currentTarget)
+        const form = e.currentTarget
+        const formData = new FormData(form)
         await createTask(formData)
+        form.reset() // Reset form after successful creation
         setIsCreateOpen(false)
         setIsPending(false)
-        // No reload needed, subscription handles it
     }
 
     const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -106,14 +107,29 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
     const handleDelete = async (id: number) => {
         if (!confirm('¿Eliminar esta tarea?')) return
         setIsPending(true)
-        await deleteTask(id)
+        try {
+            await deleteTask(id)
+        } catch (error) {
+            console.error('Error deleting task:', error)
+            alert('Error al eliminar la tarea.')
+        }
+        // Always close modal and clean up, even if there was an error
         setIsPending(false)
+        setIsEditOpen(false)
+        setEditingTask(null)
     }
 
     const openEdit = (task: Task) => {
         setEditingTask(task)
         setIsEditOpen(true)
         setIsEditing(false) // Start in view mode
+    }
+
+    const openCreate = () => {
+        // Find the form and reset it just in case
+        const createForm = document.getElementById('create-task-form') as HTMLFormElement
+        if (createForm) createForm.reset()
+        setIsCreateOpen(true)
     }
 
     return (
@@ -179,7 +195,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
             </nav>
 
             {activeTab === 'pending' && (
-                <button className="fab" onClick={() => setIsCreateOpen(true)}>
+                <button className="fab" onClick={openCreate}>
                     <i className="material-icons">add</i>
                 </button>
             )}
@@ -190,7 +206,7 @@ export default function TasksClient({ initialTasks }: { initialTasks: Task[] }) 
                     <div className="modal-header">
                         Nueva Tarea
                     </div>
-                    <form onSubmit={handleCreateSubmit}>
+                    <form id="create-task-form" onSubmit={handleCreateSubmit}>
                         <div className="modal-content">
                             <div className="form-group">
                                 <label className="form-label">Título</label>
